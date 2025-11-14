@@ -152,15 +152,18 @@
 ### Facts
 - AutoSpecMan 自身是“spec 推断器”；尚未把 spec 强制接入 AI 生成工作流。
 - 当前没有记录 AI 行为或例外。
+- `codeindex` 可作为可选语义索引层：在目标仓库运行 `node dist/cli/index.js index`/`search "自然语言问题"`，利用 Tree-sitter AST、调用链、向量搜索回答“数据库 schema”“统一响应结构”“返回体模式”等问题，为 AutoSpecMan/qwen 提供框架级事实。
 
 ### Rules / Decisions
 - 所有 AI Agent（含 AutoSpecMan 自己）在修改代码前必须读取最新 spec，并在变更描述中引用相关章节。
 - 若 AI 输出的命名/目录/错误处理不符合规则，CI 必须拒绝并提供反馈。
 - 新增或放宽规则需在 docs 中记录审批人和原因。
+- 当需要框架/业务语义时，应先查询 `codeindex` 索引库并把结果并入 spec：AutoSpecMan detector 可以直接读取 `codeindex` SQLite/CLI 输出，将 Tornado 等脚手架的异常封装、通用响应体、数据库 schema 等约定写入 `Facts/Rules`。
 
 ### Verification
 - 在未来的 AI 工作流中，注入“spec 校验”步骤：例如调用 AutoSpecMan CLI 对 diff 做 dry-run 检查。
 - 记录 AI 操作日志，定期回顾偏差并更新 spec。
+- 验证语义查询链路：在示例仓库运行 `codeindex index` 后，使用自然语言搜索“数据库 schema”“响应包装器”等，确认能返回符号/文件定位；AutoSpecMan 应能消费这些结果并反映到输出 spec。
 
 ## 10. 遥测与合规
 ### Facts
