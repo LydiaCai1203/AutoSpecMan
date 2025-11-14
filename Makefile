@@ -4,11 +4,14 @@ VENV ?= .venv
 PIP ?= $(VENV)/bin/pip
 PY ?= $(VENV)/bin/python
 REPO ?= .
-REPO_NAME := $(notdir $(abspath $(REPO)))
+ifneq ($(origin repo), undefined)
+REPO := $(repo)
+endif
+REPO_NAME = $(notdir $(abspath $(REPO)))
 SPEC_DIR ?= specs
-RUN_OUT ?= $(SPEC_DIR)/spec-$(REPO_NAME).yaml
-SMOKE_JSON ?= /tmp/spec-$(REPO_NAME).json
-SMOKE_YAML ?= /tmp/spec-$(REPO_NAME).yaml
+RUN_OUT = $(SPEC_DIR)/spec-$(REPO_NAME).yaml
+SMOKE_JSON = /tmp/spec-$(REPO_NAME).json
+SMOKE_YAML = /tmp/spec-$(REPO_NAME).yaml
 
 .PHONY: help
 help:
@@ -33,12 +36,12 @@ ensure-venv:
 run: ensure-venv
 	@mkdir -p $(SPEC_DIR)
 	@echo "Generating spec for $(REPO) -> $(RUN_OUT)"
-	@$(PY) -m autospecman.cli --repo $(REPO) --format yaml --output $(RUN_OUT)
+	@$(PY) -m autospecman.cli --repo "$(REPO)" --format yaml --output "$(RUN_OUT)"
 
 .PHONY: smoke
 smoke: ensure-venv
 	@echo "Generating JSON spec for $(REPO) -> $(SMOKE_JSON)"
-	@$(PY) -m autospecman.cli --repo $(REPO) --format json --output $(SMOKE_JSON)
+	@$(PY) -m autospecman.cli --repo "$(REPO)" --format json --output "$(SMOKE_JSON)"
 	@echo "Generating YAML spec for $(REPO) -> $(SMOKE_YAML)"
-	@$(PY) -m autospecman.cli --repo $(REPO) --format yaml --output $(SMOKE_YAML)
+	@$(PY) -m autospecman.cli --repo "$(REPO)" --format yaml --output "$(SMOKE_YAML)"
 
