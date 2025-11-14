@@ -18,16 +18,18 @@ make setup
 ```
 该命令会创建 `.venv/`、安装开发依赖与 `autospecman` 可执行文件。
 
-2. 生成 spec：
+2. 生成 spec（默认扫描当前仓库，可用 `REPO=/path/to/other` 覆盖）。输出会保存在 `specs/spec-<仓库名>.yaml`：
 ```bash
-make run
+make run                      # 生成 specs/spec-<cwd>.yaml
+REPO=/some/repo make run      # 生成 specs/spec-some.yaml
 # 或手动
 .venv/bin/python -m autospecman.cli --repo /path/to/repo --format yaml --output ./spec.yaml
 ```
 
-3. 验证 CLI：
+3. 验证 CLI（将在 `/tmp/spec-<仓库名>.{json,yaml}` 生成一次性文件）：
 ```bash
-make smoke   # 生成 JSON/YAML 各一份
+make smoke
+REPO=/some/repo make smoke
 ```
 
 不指定 `--output` 时，结果会直接打印到终端。默认会采样最近 400 条提交，必要时可以用 `--max-commits` 调整。

@@ -7,6 +7,7 @@
 - 语言与运行时：`pyproject.toml` 要求 `Python >= 3.11` (`setuptools` 构建)。
 - 包管理：使用 `pip`/`venv`，通过 `make setup` 自动创建 `.venv` 并执行 `pip install -e .[extras]`；`requirements-dev.txt` 记录开发依赖（`pyyaml`, `pip`, `setuptools`）。
 - CLI 入口：在 `pyproject.toml` 中注册 `autospecman = autospecman.cli:main`。
+- Makefile 提供 `run`/`smoke`，可通过 `REPO=/path/to/repo make run` 指定仓库，并默认将结果保存到 `specs/spec-<repo>.yaml`。
 - 目标平台：macOS/Linux，本地运行即可，无额外系统依赖。
 
 -### Rules / Decisions
@@ -16,7 +17,7 @@
 
 ### Verification
 - `python --version` 必须返回 3.11.x；CI 中运行 `python -V`.
-- `make smoke`（或手动运行 `python -m autospecman.cli --repo . --format json`、`--format yaml`）必须成功生成 spec。
+- `make smoke`（或 `REPO=/path make smoke`）必须成功生成 `/tmp/spec-<repo>.{json,yaml}`；若 CLI 失败，禁止继续开发/发布流程。
 - 依赖一致性：`pip check` / `pip list --outdated` 作为发布前检查。
 
 ## 2. 目录与模块结构

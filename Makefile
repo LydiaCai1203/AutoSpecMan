@@ -3,6 +3,12 @@ PYTHON_BIN := $(shell which $(PYTHON))
 VENV ?= .venv
 PIP ?= $(VENV)/bin/pip
 PY ?= $(VENV)/bin/python
+REPO ?= .
+REPO_NAME := $(notdir $(abspath $(REPO)))
+SPEC_DIR ?= specs
+RUN_OUT ?= $(SPEC_DIR)/spec-$(REPO_NAME).yaml
+SMOKE_JSON ?= /tmp/spec-$(REPO_NAME).json
+SMOKE_YAML ?= /tmp/spec-$(REPO_NAME).yaml
 
 .PHONY: help
 help:
@@ -25,12 +31,14 @@ ensure-venv:
 
 .PHONY: run
 run: ensure-venv
-	@$(PY) -m autospecman.cli --repo . --format yaml
+	@mkdir -p $(SPEC_DIR)
+	@echo "Generating spec for $(REPO) -> $(RUN_OUT)"
+	@$(PY) -m autospecman.cli --repo $(REPO) --format yaml --output $(RUN_OUT)
 
 .PHONY: smoke
 smoke: ensure-venv
-	@$(PY) -m autospecman.cli --repo . --format json >/tmp/autospecman.json
-	@$(PY) -m autospecman.cli --repo . --format yaml >/tmp/autospecman.yaml
-	@echo "JSON -> /tmp/autospecman.json"
-	@echo "YAML -> /tmp/autospecman.yaml"
+	@echo "Generating JSON spec for $(REPO) -> $(SMOKE_JSON)"
+	@$(PY) -m autospecman.cli --repo $(REPO) --format json --output $(SMOKE_JSON)
+	@echo "Generating YAML spec for $(REPO) -> $(SMOKE_YAML)"
+	@$(PY) -m autospecman.cli --repo $(REPO) --format yaml --output $(SMOKE_YAML)
 
