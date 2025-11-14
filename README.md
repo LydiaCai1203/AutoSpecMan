@@ -87,3 +87,6 @@ notes: []
 3. 在 AI Agent 与 CI 中强制执行规范
 
 欢迎基于此 MVP 继续扩展，实现完整的 Spec-driven Development 闭环。
+
+
+当我确定我喜欢上你的时候，我们已经不能在一起了。
