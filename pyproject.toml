@@ -1,0 +1,26 @@
+[project]
+name = "autospecman"
+version = "0.1.0"
+description = "MVP tool for inferring repository specifications automatically"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "AutoSpecMan Team"}]
+license = {text = "MIT"}
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Intended Audience :: Developers"
+]
+dependencies = []
+
+[project.optional-dependencies]
+extras = ["pyyaml>=6.0"]
+
+[project.scripts]
+autospecman = "autospecman.cli:main"
+
+[build-system]
+requires = ["setuptools>=67"]
+build-backend = "setuptools.build_meta"
+
