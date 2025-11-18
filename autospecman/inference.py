@@ -29,7 +29,15 @@ except Exception:  # pragma: no cover
     yaml = None
 
 
-def infer_spec(repo_path: str | Path) -> Dict[str, Any]:
+def infer_spec(
+    repo_path: str | Path,
+    max_commits: int = 400,
+    use_llm: bool = True,
+    llm_provider: str = "openai",
+    llm_model: str = "gpt-3.5-turbo",
+    llm_api_key: Optional[str] = None,
+    llm_api_base_url: Optional[str] = None,
+) -> Dict[str, Any]:
     root = Path(repo_path).resolve()
     ctx = repository.RepoContext.from_root(root)
     spec = empty_spec(root)
@@ -58,14 +66,35 @@ def infer_spec(repo_path: str | Path) -> Dict[str, Any]:
     register_confidence(spec, "tooling.test_frameworks", 0.3 + 0.5 * bool(tests))
     register_confidence(spec, "tooling.ci_systems", 0.2 + 0.6 * bool(ci_systems))
 
-    history = analyze_git_history(root)
+    history = analyze_git_history(
+        root,
+        max_commits=max_commits,
+        use_llm=use_llm,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+        llm_api_key=llm_api_key,
+        llm_api_base_url=llm_api_base_url,
+    )
     spec["workflow"]["commit_cadence_per_week"] = history.average_commits_per_week
     spec["workflow"]["active_contributors"] = history.active_contributors
     spec["workflow"]["release_signal"] = history.recent_release_signal
+    spec["workflow"]["branch_strategy"] = history.branch_strategy
+    spec["workflow"]["branch_types"] = history.branch_types
+    spec["workflow"]["commit_convention"] = history.commit_convention
+    spec["workflow"]["branch_naming_pattern"] = history.branch_naming_pattern
+    spec["workflow"]["tag_naming_convention"] = history.tag_naming_convention
+    spec["workflow"]["recent_tags_count"] = history.recent_tags_count
     register_confidence(
         spec,
         "workflow.history",
-        0.2 + 0.6 * bool(history.average_commits_per_week),
+        0.2
+        + 0.6
+        * bool(
+            history.average_commits_per_week
+            or history.branch_strategy
+            or history.commit_convention
+            or history.branch_naming_pattern
+        ),
     )
 
     if ci_systems:

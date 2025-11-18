@@ -16,6 +16,7 @@ dependencies = []
 
 [project.optional-dependencies]
 extras = ["pyyaml>=6.0"]
+llm = ["requests>=2.28.0"]  # Optional: for better HTTP support, falls back to urllib if not available
 
 [project.scripts]
 autospecman = "autospecman.cli:main"

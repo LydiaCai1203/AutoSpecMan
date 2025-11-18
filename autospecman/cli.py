@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from .config import load_config, merge_config_with_args
 from .inference import infer_spec, serialize_spec
 
 
@@ -38,11 +39,64 @@ def build_parser() -> argparse.ArgumentParser:
         default=400,
         help="Number of git commits to sample for history analysis.",
     )
+    parser.add_argument(
+        "--use-llm",
+        action="store_true",
+        default=True,
+        help="Use LLM to analyze git conventions (default: True).",
+    )
+    parser.add_argument(
+        "--no-llm",
+        dest="use_llm",
+        action="store_false",
+        help="Disable LLM analysis and use rule-based detection only.",
+    )
+    parser.add_argument(
+        "--llm-provider",
+        type=str,
+        default="openai",
+        choices=("openai",),
+        help="LLM provider to use (default: openai).",
+    )
+    parser.add_argument(
+        "--llm-model",
+        type=str,
+        default="gpt-3.5-turbo",
+        help="LLM model to use (default: gpt-3.5-turbo).",
+    )
+    parser.add_argument(
+        "--llm-api-key",
+        type=str,
+        help="LLM API key (if not provided, reads from LLM_API_KEY or OPENAI_API_KEY env var).",
+    )
+    parser.add_argument(
+        "--llm-api-base-url",
+        type=str,
+        help="LLM API base URL (e.g., https://api.example.com/v1). Defaults to OpenAI-compatible endpoint.",
+    )
     return parser
 
 
-def run(repo: Path, fmt: str, output: Optional[Path], max_commits: int) -> int:
-    spec = infer_spec(repo)
+def run(
+    repo: Path,
+    fmt: str,
+    output: Optional[Path],
+    max_commits: int,
+    use_llm: bool,
+    llm_provider: str,
+    llm_model: str,
+    llm_api_key: Optional[str],
+    llm_api_base_url: Optional[str],
+) -> int:
+    spec = infer_spec(
+        repo,
+        max_commits=max_commits,
+        use_llm=use_llm,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+        llm_api_key=llm_api_key,
+        llm_api_base_url=llm_api_base_url,
+    )
     document = serialize_spec(spec, fmt=fmt)
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -57,7 +111,33 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        return run(args.repo, args.format, args.output, args.max_commits)
+        # Load configuration from files
+        config = load_config(args.repo)
+
+        # Merge with command-line arguments (args take precedence)
+        merged_config = merge_config_with_args(
+            config,
+            {
+                "max_commits": args.max_commits,
+                "use_llm": args.use_llm,
+                "llm_provider": args.llm_provider,
+                "llm_model": args.llm_model,
+                "llm_api_key": args.llm_api_key,
+                "llm_api_base_url": args.llm_api_base_url,
+            },
+        )
+
+        return run(
+            args.repo,
+            args.format,
+            args.output,
+            merged_config.max_commits,
+            merged_config.llm.use_llm,
+            merged_config.llm.provider,
+            merged_config.llm.model,
+            merged_config.llm.api_key,
+            merged_config.llm.api_base_url,
+        )
     except Exception as exc:  # pragma: no cover
         parser.error(str(exc))
         return 2

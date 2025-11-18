@@ -1,0 +1,26 @@
+# AutoSpecMan 配置文件示例
+# 将此文件复制为 autospecman.toml 或 .autospecman.toml 到项目根目录
+# 或者放到 ~/.autospecman/config.toml 作为用户级配置
+
+# Git 历史分析配置
+max_commits = 400
+
+# LLM 配置（用于增强 Git 历史分析）
+[llm]
+# 是否启用 LLM 分析（默认: true）
+use_llm = true
+
+# LLM 提供商（当前仅支持 "openai"）
+provider = "openai"
+
+# 使用的模型名称
+model = "qwen3-coder-plus"
+
+# API Key（可选，如果未设置会从 OPENAI_API_KEY 环境变量读取）
+# 注意：建议使用环境变量而不是直接写在配置文件中，避免泄露
+api_key = "BP5NHsmGdX6HzMHIKs1GwmvTtmXtUuAVTRRoZtD0UK6iwCMn"
+
+# API Base URL（可选，用于第三方 LLM 供应商）
+# 如果未设置，默认使用 OpenAI 兼容的端点: https://api.openai.com/v1
+# 示例：使用第三方供应商
+# api_base_url = "https://model-square.app.baizhi.cloud/v1"

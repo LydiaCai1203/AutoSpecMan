@@ -30,6 +30,12 @@ def empty_spec(repo_path: Path) -> Dict[str, Any]:
             "commit_cadence_per_week": None,
             "active_contributors": None,
             "release_signal": None,
+            "branch_strategy": None,
+            "branch_types": [],
+            "commit_convention": None,
+            "branch_naming_pattern": None,
+            "tag_naming_convention": None,
+            "recent_tags_count": None,
         },
         "quality_gates": {
             "required_checks": [],
