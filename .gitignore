@@ -30,3 +30,5 @@ __pycache__/
 # Editor/IDE
 .idea/
 .vscode/
+
+.DS_Store

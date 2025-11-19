@@ -24,3 +24,16 @@ model = "gpt-3.5-turbo"
 # 如果未设置，默认使用 OpenAI 兼容的端点: https://api.openai.com/v1
 # 示例：使用第三方供应商
 # api_base_url = "https://api.example.com/v1"
+
+# Embedding 模型（用于 CodeIndex 语义搜索）
+# 如果未设置，默认使用 text-embedding-3-small
+# 注意：需要确保该模型在你的 API 供应商处可用
+# embedding_model = "text-embedding-3-small"
+
+# CodeIndex 配置（用于错误处理检测）
+[codeindex]
+# 代码索引数据库路径（可选，如果未设置会自动在 .codeindex/ 目录下查找）
+# 支持相对路径（相对于仓库根目录）或绝对路径
+# db_path = ".codeindex/project.db"
+# 或使用绝对路径
+# db_path = "/path/to/codeindex/project.db"

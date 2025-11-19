@@ -15,6 +15,7 @@ from .structure import (  # noqa: F401
     detect_api_artifacts,
     detect_data_artifacts,
 )
+from .error_handling import detect_error_handling  # noqa: F401
 
 __all__ = [
     "detect_languages",
@@ -29,5 +30,6 @@ __all__ = [
     "analyze_directory_layout",
     "detect_api_artifacts",
     "detect_data_artifacts",
+    "detect_error_handling",
 ]
 

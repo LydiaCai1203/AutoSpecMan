@@ -1,8 +1,11 @@
+# 永远使用当前激活的 Python 环境（conda 或其他）
+# 不依赖 .venv，直接使用当前激活的 Python
 PYTHON ?= python
 PYTHON_BIN := $(shell which $(PYTHON))
 VENV ?= .venv
-PIP ?= $(VENV)/bin/pip
-PY ?= $(VENV)/bin/python
+# 直接使用当前激活的 Python（conda 或其他）
+PIP := $(PYTHON_BIN) -m pip
+PY := $(PYTHON_BIN)
 REPO ?= .
 ifneq ($(origin repo), undefined)
 REPO := $(repo)
@@ -30,7 +33,13 @@ setup:
 
 .PHONY: ensure-venv
 ensure-venv:
-	@if [ ! -x "$(PY)" ]; then $(MAKE) setup; fi
+	@# 检查当前激活的 Python 是否可用
+	@if ! $(PY) --version > /dev/null 2>&1; then \
+		echo "Error: Python not found at $(PY)"; \
+		echo "Please activate your conda environment (e.g., conda activate AutoSpecMan)"; \
+		exit 1; \
+	fi
+	@echo "Using Python: $(PY)"
 
 .PHONY: run
 run: ensure-venv

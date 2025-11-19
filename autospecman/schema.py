@@ -57,6 +57,10 @@ def empty_spec(repo_path: Path) -> Dict[str, Any]:
             "migration_dirs": [],
             "orm_configs": [],
         },
+        "error_handling": {
+            "error_handling_approach": None,
+            "error_handling_details": None,
+        },
         "confidence": {},
         "notes": [],
     }

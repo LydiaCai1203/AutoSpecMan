@@ -25,6 +25,17 @@ class LLMConfig:
     model: str = "gpt-3.5-turbo"
     api_key: Optional[str] = None
     api_base_url: Optional[str] = None
+    embedding_model: Optional[str] = None  # Embedding model for CodeIndex semantic search
+
+
+@dataclass
+class CodeIndexConfig:
+    """CodeIndex configuration settings."""
+
+    db_path: Optional[str] = None  # Path to codeindex database, if None will auto-detect
+
+    def __post_init__(self):
+        pass
 
 
 @dataclass
@@ -33,10 +44,13 @@ class Config:
 
     max_commits: int = 400
     llm: LLMConfig = None
+    codeindex: CodeIndexConfig = None
 
     def __post_init__(self):
         if self.llm is None:
             self.llm = LLMConfig()
+        if self.codeindex is None:
+            self.codeindex = CodeIndexConfig()
 
 
 def find_config_files(repo_path: Path) -> list[Path]:
@@ -121,6 +135,14 @@ def _load_from_dict(config: Config, data: dict) -> None:
                 config.llm.api_key = str(llm_data["api_key"])
             if "api_base_url" in llm_data:
                 config.llm.api_base_url = str(llm_data["api_base_url"])
+            if "embedding_model" in llm_data:
+                config.llm.embedding_model = str(llm_data["embedding_model"])
+
+    if "codeindex" in data:
+        codeindex_data = data["codeindex"]
+        if isinstance(codeindex_data, dict):
+            if "db_path" in codeindex_data:
+                config.codeindex.db_path = str(codeindex_data["db_path"])
 
 
 def _load_from_env(config: Config) -> None:
@@ -156,6 +178,10 @@ def _load_from_env(config: Config) -> None:
     elif "AUTOSPECMAN_LLM_API_BASE_URL" in os.environ:
         config.llm.api_base_url = os.environ["AUTOSPECMAN_LLM_API_BASE_URL"]
 
+    # CodeIndex settings
+    if "AUTOSPECMAN_CODEINDEX_DB_PATH" in os.environ:
+        config.codeindex.db_path = os.environ["AUTOSPECMAN_CODEINDEX_DB_PATH"]
+
 
 def merge_config_with_args(config: Config, args: dict) -> Config:
     """Merge command-line arguments with config, with args taking precedence.
@@ -170,11 +196,13 @@ def merge_config_with_args(config: Config, args: dict) -> Config:
     merged = Config()
     merged.max_commits = args.get("max_commits", config.max_commits)
     merged.llm = LLMConfig()
+    merged.codeindex = CodeIndexConfig()
 
     # LLM settings
     merged.llm.use_llm = args.get("use_llm", config.llm.use_llm)
     merged.llm.provider = args.get("llm_provider", config.llm.provider)
-    merged.llm.model = args.get("llm_model", config.llm.model)
+    # Model: CLI arg (if provided) > config file > default
+    merged.llm.model = args.get("llm_model") or config.llm.model or "gpt-3.5-turbo"
     # API key: CLI arg > config file > env var
     merged.llm.api_key = (
         args.get("llm_api_key")
@@ -188,6 +216,14 @@ def merge_config_with_args(config: Config, args: dict) -> Config:
         or config.llm.api_base_url
         or os.getenv("LLM_API_BASE_URL")
         or None  # Will use default OpenAI-compatible endpoint
+    )
+
+    # CodeIndex settings
+    merged.codeindex.db_path = (
+        args.get("codeindex_db_path")
+        or config.codeindex.db_path
+        or os.getenv("AUTOSPECMAN_CODEINDEX_DB_PATH")
+        or None
     )
 
     return merged

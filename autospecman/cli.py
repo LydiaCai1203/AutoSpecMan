@@ -61,8 +61,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--llm-model",
         type=str,
-        default="gpt-3.5-turbo",
-        help="LLM model to use (default: gpt-3.5-turbo).",
+        default=None,
+        help="LLM model to use (default: from config file or gpt-3.5-turbo).",
     )
     parser.add_argument(
         "--llm-api-key",
@@ -73,6 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--llm-api-base-url",
         type=str,
         help="LLM API base URL (e.g., https://api.example.com/v1). Defaults to OpenAI-compatible endpoint.",
+    )
+    parser.add_argument(
+        "--codeindex-db-path",
+        type=str,
+        help="Path to CodeIndex database file. If not provided, will auto-detect in .codeindex/ directory.",
     )
     return parser
 
@@ -87,6 +92,7 @@ def run(
     llm_model: str,
     llm_api_key: Optional[str],
     llm_api_base_url: Optional[str],
+    codeindex_db_path: Optional[str],
 ) -> int:
     spec = infer_spec(
         repo,
@@ -96,6 +102,7 @@ def run(
         llm_model=llm_model,
         llm_api_key=llm_api_key,
         llm_api_base_url=llm_api_base_url,
+        codeindex_db_path=codeindex_db_path,
     )
     document = serialize_spec(spec, fmt=fmt)
     if output:
@@ -124,6 +131,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "llm_model": args.llm_model,
                 "llm_api_key": args.llm_api_key,
                 "llm_api_base_url": args.llm_api_base_url,
+                "codeindex_db_path": args.codeindex_db_path,
             },
         )
 
@@ -137,6 +145,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             merged_config.llm.model,
             merged_config.llm.api_key,
             merged_config.llm.api_base_url,
+            merged_config.codeindex.db_path,
         )
     except Exception as exc:  # pragma: no cover
         parser.error(str(exc))

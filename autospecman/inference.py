@@ -13,6 +13,7 @@ from .detectors import (
     detect_api_artifacts,
     detect_ci_systems,
     detect_data_artifacts,
+    detect_error_handling,
     detect_formatters,
     detect_languages,
     detect_linters,
@@ -37,6 +38,7 @@ def infer_spec(
     llm_model: str = "gpt-3.5-turbo",
     llm_api_key: Optional[str] = None,
     llm_api_base_url: Optional[str] = None,
+    codeindex_db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     root = Path(repo_path).resolve()
     ctx = repository.RepoContext.from_root(root)
@@ -126,6 +128,23 @@ def infer_spec(
         spec,
         "data_assets",
         0.2 + 0.6 * bool(data_assets["ddl_files"] or data_assets["migration_dirs"]),
+    )
+
+    error_handling = detect_error_handling(
+        root,
+        use_llm=use_llm,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+        llm_api_key=llm_api_key,
+        llm_api_base_url=llm_api_base_url,
+        codeindex_db_path=codeindex_db_path,
+    )
+    spec["error_handling"]["error_handling_approach"] = error_handling.get("error_handling_approach")
+    spec["error_handling"]["error_handling_details"] = error_handling.get("error_handling_details")
+    register_confidence(
+        spec,
+        "error_handling",
+        error_handling.get("confidence", 0.0),
     )
 
     return spec
