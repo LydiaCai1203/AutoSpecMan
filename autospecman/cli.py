@@ -9,6 +9,7 @@ from typing import Optional
 
 from .config import load_config, merge_config_with_args
 from .inference import infer_spec, serialize_spec
+from .ai_formatter import format_for_ai
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,9 +25,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=("yaml", "json"),
+        choices=("yaml", "json", "ai"),
         default="yaml",
-        help="Serialization format for the generated spec.",
+        help="Serialization format for the generated spec. 'ai' format is optimized for LLM consumption.",
     )
     parser.add_argument(
         "--output",
@@ -104,7 +105,13 @@ def run(
         llm_api_base_url=llm_api_base_url,
         codeindex_db_path=codeindex_db_path,
     )
-    document = serialize_spec(spec, fmt=fmt)
+    
+    # Use AI formatter if requested
+    if fmt == "ai":
+        document = format_for_ai(spec, repo)
+    else:
+        document = serialize_spec(spec, fmt=fmt)
+    
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(document)

@@ -15,6 +15,7 @@ SPEC_DIR ?= specs
 RUN_OUT = $(SPEC_DIR)/spec-$(REPO_NAME).yaml
 SMOKE_JSON = /tmp/spec-$(REPO_NAME).json
 SMOKE_YAML = /tmp/spec-$(REPO_NAME).yaml
+SMOKE_AI = /tmp/spec-$(REPO_NAME)-ai.md
 
 .PHONY: help
 help:
@@ -49,8 +50,6 @@ run: ensure-venv
 
 .PHONY: smoke
 smoke: ensure-venv
-	@echo "Generating JSON spec for $(REPO) -> $(SMOKE_JSON)"
-	@$(PY) -m autospecman.cli --repo "$(REPO)" --format json --output "$(SMOKE_JSON)"
-	@echo "Generating YAML spec for $(REPO) -> $(SMOKE_YAML)"
-	@$(PY) -m autospecman.cli --repo "$(REPO)" --format yaml --output "$(SMOKE_YAML)"
+	@echo "Generating AI-friendly spec for $(REPO) -> $(SMOKE_AI)"
+	@$(PY) -m autospecman.cli --repo "$(REPO)" --format ai --output "$(SMOKE_AI)"
 

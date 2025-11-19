@@ -106,6 +106,27 @@ REPO=/some/repo make run      # 生成 specs/spec-some.yaml
 .venv/bin/python -m autospecman.cli --repo /path/to/repo --format yaml --output ./spec.yaml
 ```
 
+### 生成 AI 友好格式（推荐用于 AI Agent）
+
+为了最大化 AI 对项目规范的遵守度，可以使用 `--format ai` 生成三段式格式：
+
+1. **自然语言指令**：告诉 AI 为什么要遵守规范
+2. **结构化 JSON 规则**：将检测到的事实转换为可执行的规则
+3. **示例**：提供具体的代码模式示例
+
+```bash
+# 生成 AI 友好格式
+python -m autospecman.cli --repo . --format ai --output ./spec-ai.md
+
+# 或使用 make（需要修改 Makefile 添加 ai 格式支持）
+```
+
+AI 格式的特点：
+- ✅ 将"仓库事实"转换为"AI 约束规则"
+- ✅ 包含明确的指令，防止 AI 忽略规范
+- ✅ 提供结构化 JSON，便于程序化处理
+- ✅ 包含实际示例，引导 AI 生成符合规范的代码
+
 ### 4. 测试和验证
 
 #### 基本功能测试（不使用 LLM）
