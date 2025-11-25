@@ -1,34 +1,101 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Python virtual environments & build artifacts
-.venv/
-env/
-venv/
-dist/
-build/
-*.egg-info/
+# AutoSpecMan .gitignore
 
-# Python cache
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Tool outputs
-.mypy_cache/
-.ruff_cache/
-.pytest_cache/
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.ENV
 
-# CLI smoke test outputs
-/tmp/autospecman.json
-/tmp/autospecman.yaml
-
-# Environment files
-.env
-.env.*
-
-# Editor/IDE
+# PyCharm
 .idea/
+
+# VS Code
 .vscode/
 
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# CodeIndex
+.codeindex/
+*.db
+*.db-shm
+*.db-wal
+
+# Configuration files (may contain sensitive info)
+autospec.config.json
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Output files
+output/
+specs/*.md
+specs/*.json
+specs/*.yaml
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.hypothesis/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
