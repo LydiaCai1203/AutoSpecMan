@@ -1,5 +1,6 @@
 from detector.structure_detector import StructureDetector
 from detector.codestyle_detector import CodeStyleDetector
+from detector.versioncontrol_detector import VersionControlDetector
 
 if __name__ == "__main__":
     # 结构检测
@@ -9,9 +10,16 @@ if __name__ == "__main__":
     # )
     # detector.detect_to_file(output_path="/Users/caiqj/project/private/new/AutoSpecMan/result/structure.md")
 
-    # 代码风格检测 - 直接传入 config，自动转换
-    detector = CodeStyleDetector(
+    # 代码风格检测
+    # detector = CodeStyleDetector(
+    #     config_path="/Users/caiqj/project/private/new/AutoSpecMan/config/config.yaml",
+    #     config_type="codestyle"
+    # )
+    # detector.detect_to_file(output_path="/Users/caiqj/project/private/new/AutoSpecMan/result/code_style.md")
+
+    # 版本控制习惯检测
+    detector = VersionControlDetector(
         config_path="/Users/caiqj/project/private/new/AutoSpecMan/config/config.yaml",
-        config_type="codestyle"
+        config_type="git"
     )
-    detector.detect_to_file(output_path="/Users/caiqj/project/private/new/AutoSpecMan/result/code_style.md")
+    detector.detect_to_file(output_path="/Users/caiqj/project/private/new/AutoSpecMan/result/version_control.md")

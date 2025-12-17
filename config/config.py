@@ -27,6 +27,13 @@ class CodeStyleDetectorConfig:
     languages: Optional[List[str]] = None
 
 @dataclass
+class GitDetectorConfig:
+    """Git 检测器配置"""
+    root_path: str
+    analyze_commits_count: int = 100  # 分析的提交数量（用于识别习惯）
+    git_repo_path: Optional[str] = None  # 如果与 root_path 不同
+
+@dataclass
 class AppConfig:
     """应用主配置"""
     project_root: str
@@ -137,19 +144,47 @@ def load_codestyle_detector_config(config_path: Optional[str] = None) -> CodeSty
     )
 
 
+def load_git_detector_config(config_path: Optional[str] = None) -> GitDetectorConfig:
+    """
+    从配置文件加载 GitDetector 配置
+    
+    Args:
+        config_path: 配置文件路径，如果为 None 则查找默认配置文件
+        
+    Returns:
+        GitDetectorConfig 实例
+        
+    Raises:
+        FileNotFoundError: 配置文件不存在
+        ValueError: 配置文件格式错误
+    """
+    config_data = _load_config_data(config_path)
+    common_config = _parse_common_config(config_data)
+    
+    git_config = config_data.get('git', {})
+    analyze_commits_count = git_config.get('analyze_commits_count', 100)
+    git_repo_path = git_config.get('repo_path')
+    
+    return GitDetectorConfig(
+        root_path=common_config['root_path'],
+        analyze_commits_count=analyze_commits_count,
+        git_repo_path=git_repo_path
+    )
+
+
 def load_detector_config(
     config_path: Optional[str] = None,
     config_type: Optional[str] = None
-) -> Union[StructureDetectorConfig, CodeStyleDetectorConfig]:
+) -> Union[StructureDetectorConfig, CodeStyleDetectorConfig, GitDetectorConfig]:
     """
     从配置文件加载检测器配置（公共函数，支持多种配置类型）
     
     Args:
         config_path: 配置文件路径，如果为 None 则查找默认配置文件
-        config_type: 配置类型，可选值：'structure' 或 'codestyle'，默认为 'structure'
+        config_type: 配置类型，可选值：'structure', 'codestyle', 'git'，默认为 'structure'
         
     Returns:
-        检测器配置实例（StructureDetectorConfig 或 CodeStyleDetectorConfig）
+        检测器配置实例
         
     Raises:
         FileNotFoundError: 配置文件不存在
@@ -162,5 +197,7 @@ def load_detector_config(
         return load_structure_detector_config(config_path)
     elif config_type == 'codestyle':
         return load_codestyle_detector_config(config_path)
+    elif config_type == 'git':
+        return load_git_detector_config(config_path)
     else:
-        raise ValueError(f"无效的配置类型: {config_type}，支持的类型: 'structure', 'codestyle'")
+        raise ValueError(f"无效的配置类型: {config_type}，支持的类型: 'structure', 'codestyle', 'git'")
