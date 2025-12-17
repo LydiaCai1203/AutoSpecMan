@@ -1,0 +1,13 @@
+project:
+  root_path: "/Users/caiqj/project/company/new/codingmatrix"
+  max_depth: 5
+  languages:
+    - go
+    - python
+    - typescript
+    - javascript
+    - java
+    - rust
+
+codeindex:
+  db_path: /Users/caiqj/project/private/new/ast-demo/.codeindex/codingmatrix.db

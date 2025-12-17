@@ -3,14 +3,12 @@
 """
 
 from .codeindex_utils import (
-    find_codeindex_db,
-    create_codeindex_client,
-    get_codeindex_client_or_none,
+    CodeIndexClientManager,
 )
+from .logger import logger
 
 __all__ = [
-    'find_codeindex_db',
-    'create_codeindex_client',
-    'get_codeindex_client_or_none',
+    'CodeIndexClientManager',
+    'logger',
 ]
 

@@ -9,17 +9,14 @@
 6. 输出带注释的目录树结构
 """
 
-import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass
 from collections import defaultdict
 
-from codeindex import CodeIndexClient
-
-from config.config import StructureDetectorConfig, load_detector_config
-from utils.codeindex_utils import find_codeindex_db, create_codeindex_client
+from detector.base_detector import BaseDetector, CodeIndexQuery
+from utils.logger import logger
 
 
 # ============================================================================
@@ -53,32 +50,6 @@ class DirectoryFunction:
     files_count: int
     subdirs_count: int
 
-
-# ============================================================================
-# 语言配置
-# ============================================================================
-
-# 文件扩展名到语言的映射
-LANGUAGE_EXTENSIONS = {
-    'go': ['.go'],
-    'python': ['.py'],
-    'typescript': ['.ts', '.tsx'],
-    'javascript': ['.js', '.jsx'],
-    'java': ['.java'],
-    'rust': ['.rs'],
-    'html': ['.html', '.htm'],
-}
-
-# CodeIndex 语言代码映射
-CODEINDEX_LANGUAGE_MAP = {
-    'go': 'go',
-    'python': 'python',
-    'typescript': 'ts',
-    'javascript': 'js',
-    'java': 'java',
-    'rust': 'rust',
-    'html': 'html',
-}
 
 # 符号提取正则模式
 SYMBOL_PATTERNS = {
@@ -114,92 +85,29 @@ SYMBOL_PATTERNS = {
     ],
 }
 
-# 排除目录模式
-EXCLUDE_PATTERNS = [
-    '.git', '.svn', '.hg',
-    'node_modules', '__pycache__', '.pytest_cache',
-    'vendor', 'dist', 'build', 'target',
-    '.codeindex', '.idea', '.vscode',
-]
-
 
 # ============================================================================
 # StructureDetector 主类
 # ============================================================================
 
-class StructureDetector:
+class StructureDetector(BaseDetector, CodeIndexQuery):
     """动态项目结构检测器"""
     
-    def __init__(self, config: Optional[StructureDetectorConfig] = None, config_path: Optional[str] = None):
+    def __init__(
+        self, 
+        config_path: Optional[str] = None,
+        config_type: Optional[str] = 'structure'
+    ):
         """
         初始化检测器
         
         Args:
-            config: 结构检测器配置（如果为 None，则从配置文件加载）
-            config_path: 配置文件路径（仅在 config 为 None 时使用）
+            config_path: 配置文件路径
+            config_type: 配置类型
         """
-        # 如果没有提供配置，尝试从配置文件加载
-        if config is None:
-            try:
-                config = load_detector_config(config_path)
-            except FileNotFoundError:
-                # 如果配置文件不存在，使用默认配置
-                config = StructureDetectorConfig(
-                    root_path=os.getenv('DETECTOR_PROJECT_PATH', '.'),
-                    codeindex_db_path=None,
-                    max_depth=None,
-                    languages=['go', 'python', 'typescript', 'javascript', 'java', 'rust']
-                )
-        
-        self.config = config
-        self.root_path = Path(config.root_path).resolve()
-        self.codeindex_db_path = config.codeindex_db_path
-        self.max_depth = config.max_depth
-        self.languages = config.languages or ['go', 'python', 'typescript', 'javascript', 'java', 'rust']
-        
-        # 内部状态
-        self._codeindex_client: Optional[CodeIndexClient] = None
-        
-    # ========================================================================
-    # 工具函数
-    # ========================================================================
-    
-    def _get_file_language(self, file_path: str) -> Optional[str]:
-        """
-        根据文件扩展名识别语言
-        
-        Args:
-            file_path: 文件路径
-            
-        Returns:
-            语言名称，如果无法识别返回 None
-        """
-        ext = Path(file_path).suffix.lower()
-        for lang, extensions in LANGUAGE_EXTENSIONS.items():
-            if ext in extensions:
-                return lang
-        return None
-    
-    def _should_exclude(self, path: str) -> bool:
-        """
-        判断路径是否应该被排除
-        
-        Args:
-            path: 路径字符串
-            
-        Returns:
-            如果应该排除返回 True
-        """
-        path_parts = Path(path).parts
-        for part in path_parts:
-            if any(pattern in part.lower() for pattern in EXCLUDE_PATTERNS):
-                return True
-        return False
-    
-    # ========================================================================
-    # 文件扫描
-    # ========================================================================
-    
+        BaseDetector.__init__(self, config_path=config_path, config_type=config_type)
+        CodeIndexQuery.__init__(self, codeindex_db_path=self.config.codeindex_db_path or '')
+
     def _scan_directory(self) -> Dict[str, Any]:
         """
         扫描目录，收集文件信息
@@ -211,52 +119,42 @@ class StructureDetector:
                 'stats': Dict   # 统计信息
             }
         """
+        # 使用基类的 _scan_files() 方法获取文件列表
+        file_paths = self._scan_files()
+        
         files: List[FileInfo] = []
         tree: Dict[str, Any] = {}
         
-        # 遍历目录
-        for root, dirs, filenames in os.walk(self.root_path):
-            root_path = Path(root)
-            relative_root = root_path.relative_to(self.root_path)
-            
-            # 过滤排除的目录
-            dirs[:] = [d for d in dirs if not self._should_exclude(str(root_path / d))]
+        # 将文件路径转换为 FileInfo 对象
+        for file_path_str in file_paths:
+            file_path = Path(file_path_str)
+            relative_path = file_path.relative_to(self.config.root_path)
             
             # 检查深度限制
-            depth = len(relative_root.parts)
-            if self.max_depth and depth >= self.max_depth:
-                dirs.clear()  # 不再深入
+            depth = len(relative_path.parts) - 1  # 减去文件名本身
+            if self.config.max_depth and depth >= self.config.max_depth:
                 continue
             
-            # 处理文件
-            for filename in filenames:
-                file_path = root_path / filename
-                relative_path = file_path.relative_to(self.root_path)
-                
-                # 检查是否排除
-                if self._should_exclude(str(file_path)):
-                    continue
-                
-                # 识别语言
-                language = self._get_file_language(str(file_path))
-                if not language or language not in self.languages:
-                    continue
-                
-                # 获取文件大小
-                try:
-                    size = file_path.stat().st_size
-                except OSError:
-                    size = 0
-                
-                # 创建文件信息
-                file_info = FileInfo(
-                    path=str(file_path),
-                    relative_path=str(relative_path),
-                    language=language,
-                    size=size,
-                    depth=depth
-                )
-                files.append(file_info)
+            # 识别语言（使用基类方法）
+            language = self._get_file_language(file_path_str)
+            if not language:
+                continue
+            
+            # 获取文件大小
+            try:
+                size = file_path.stat().st_size
+            except OSError:
+                size = 0
+            
+            # 创建文件信息
+            file_info = FileInfo(
+                path=file_path_str,
+                relative_path=str(relative_path),
+                language=language,
+                size=size,
+                depth=depth
+            )
+            files.append(file_info)
         
         # 构建统计信息
         stats = {
@@ -273,10 +171,6 @@ class StructureDetector:
             'tree': tree,  # TODO: 构建目录树结构
             'stats': stats
         }
-    
-    # ========================================================================
-    # 符号提取
-    # ========================================================================
     
     def _extract_symbols_from_file(self, file_path: str, language: str) -> List[str]:
         """
@@ -309,65 +203,6 @@ class StructureDetector:
                     symbols.add(symbol_name)
         
         return sorted(list(symbols))
-    
-    # ========================================================================
-    # CodeIndex 查询
-    # ========================================================================
-    
-    def _query_symbols_batch(self, symbol_names: List[str], language: str) -> List[Dict[str, Any]]:
-        """
-        批量查询符号
-        
-        Args:
-            symbol_names: 符号名列表
-            language: 语言类型
-            
-        Returns:
-            符号记录列表
-        """
-        if not self._codeindex_client:
-            return []
-        
-        codeindex_lang = CODEINDEX_LANGUAGE_MAP.get(language)
-        if not codeindex_lang:
-            return []
-        
-        all_symbols: List[Dict[str, Any]] = []
-        
-        for symbol_name in symbol_names:
-            try:
-                symbols = self._codeindex_client.find_symbols(
-                    name=symbol_name,
-                    language=codeindex_lang
-                )
-                # 过滤出匹配当前文件的符号（可选，这里先不过滤）
-                all_symbols.extend(symbols)
-            except Exception:
-                # 查询失败，跳过
-                continue
-        
-        return all_symbols
-    
-    def _get_symbol_summaries(self, symbols: List[Dict[str, Any]]) -> List[str]:
-        """
-        从符号记录中提取摘要
-        
-        Args:
-            symbols: 符号记录列表
-            
-        Returns:
-            摘要列表（过滤空值）
-        """
-        summaries = []
-        for symbol in symbols:
-            summary = symbol.get('chunkSummary')
-            if summary and summary.strip():
-                summaries.append(summary.strip())
-        return summaries
-    
-    # ========================================================================
-    # 功能推断
-    # ========================================================================
     
     def _extract_keywords(self, summaries: List[str]) -> List[str]:
         """
@@ -472,10 +307,6 @@ class StructureDetector:
             'confidence': confidence
         }
     
-    # ========================================================================
-    # 目录分析
-    # ========================================================================
-    
     def _analyze_directory(self, dir_path: str, file_functions: Dict[str, FileFunction]) -> Dict[str, Any]:
         """
         分析目录功能
@@ -564,10 +395,6 @@ class StructureDetector:
         
         return tree
     
-    # ========================================================================
-    # 格式化输出
-    # ========================================================================
-    
     def _format_tree_text(
         self,
         tree: Dict[str, Any],
@@ -590,7 +417,7 @@ class StructureDetector:
             格式化的字符串
         """
         if current_path is None:
-            current_path = Path(self.root_path)
+            current_path = Path(self.config.root_path)
         
         lines = []
         items = sorted(tree.items())
@@ -657,15 +484,10 @@ class StructureDetector:
         if format == 'text':
             return self._format_tree_text(tree, file_functions, dir_functions)
         elif format == 'markdown':
-            # TODO: 实现 Markdown 格式
             text = self._format_tree_text(tree, file_functions, dir_functions)
             return f"```\n{text}\n```"
         else:
             raise ValueError(f"Unsupported format: {format}")
-    
-    # ========================================================================
-    # 主入口
-    # ========================================================================
     
     def detect(self) -> Dict[str, Any]:
         """
@@ -679,101 +501,74 @@ class StructureDetector:
                 'stats': Dict            # 统计信息
             }
         """
-        # 1. 验证配置和数据库
-        db_path = find_codeindex_db(str(self.root_path), self.codeindex_db_path)
-        if not db_path:
-            raise FileNotFoundError(
-                f"CodeIndex 数据库未找到。请先使用 CodeIndex CLI 建立索引：\n"
-                f"  node dist/cli/index.js index --root {self.root_path} --db .codeindex/project.db"
-            )
+        # 1. 扫描文件
+        scan_result = self._scan_directory()
+        files = scan_result['files']
         
-        # 2. 初始化 CodeIndex 客户端
-        self._codeindex_client = create_codeindex_client(db_path)
+        # 2. 提取符号
+        all_symbols: Dict[str, List[str]] = {}
+        for file_info in files:
+            symbols = self._extract_symbols_from_file(file_info.path, file_info.language)
+            if symbols:
+                all_symbols[file_info.path] = symbols
         
-        try:
-            # 3. 扫描目录
-            print(f"📁 扫描目录: {self.root_path}")
-            scan_result = self._scan_directory()
-            files = scan_result['files']
-            print(f"   找到 {len(files)} 个文件")
-            
-            # 4. 提取符号（每个文件）
-            print(f"🔍 提取符号...")
-            all_symbols: Dict[str, List[str]] = {}
-            for file_info in files:
-                symbols = self._extract_symbols_from_file(file_info.path, file_info.language)
-                if symbols:
-                    all_symbols[file_info.path] = symbols
-            
-            total_symbols = sum(len(s) for s in all_symbols.values())
-            print(f"   提取到 {total_symbols} 个符号")
-            
-            # 5. 批量查询 CodeIndex
-            print(f"📚 查询 CodeIndex...")
-            file_symbols_map: Dict[str, List[Dict[str, Any]]] = {}
-            for file_path, symbol_names in all_symbols.items():
-                language = self._get_file_language(file_path)
-                if language:
-                    symbols = self._query_symbols_batch(symbol_names, language)
-                    file_symbols_map[file_path] = symbols
-            
-            queried_count = sum(len(s) for s in file_symbols_map.values())
-            print(f"   查询到 {queried_count} 个符号记录")
-            
-            # 6. 推断文件功能
-            print(f"🧠 推断文件功能...")
-            file_functions: Dict[str, Dict[str, Any]] = {}
-            for file_path, symbols in file_symbols_map.items():
-                function_info = self._infer_file_function(file_path, symbols)
-                file_functions[file_path] = function_info
-            
-            print(f"   分析了 {len(file_functions)} 个文件")
-            
-            # 7. 分析目录功能
-            print(f"📂 分析目录功能...")
-            dir_functions: Dict[str, Dict[str, Any]] = {}
-            
-            # 收集所有目录
-            all_dirs: Set[str] = set()
-            for file_info in files:
-                file_path_obj = Path(file_info.path)
-                # 添加所有父目录
-                for parent in file_path_obj.parents:
-                    if self.root_path in parent.parents or parent == self.root_path:
-                        all_dirs.add(str(parent))
-            
-            for dir_path in all_dirs:
-                dir_func = self._analyze_directory(dir_path, file_functions)
-                dir_functions[dir_path] = dir_func
-            
-            print(f"   分析了 {len(dir_functions)} 个目录")
-            
-            # 8. 构建目录树
-            tree = self._build_directory_tree(files)
-            
-            # 9. 格式化输出
-            print(f"📝 格式化输出...")
-            # 添加根目录名称
-            root_name = self.root_path.name or str(self.root_path)
-            formatted_tree = root_name + '\n' + self._format_tree_text(tree, file_functions, dir_functions)
-            
-            return {
-                'tree': formatted_tree,
-                'file_functions': file_functions,
-                'dir_functions': dir_functions,
-                'stats': {
-                    'files_count': len(files),
-                    'symbols_count': total_symbols,
-                    'queried_symbols': queried_count,
-                    **scan_result['stats']
-                }
+        total_symbols = sum(len(s) for s in all_symbols.values())
+        logger.info(f"提取到 {total_symbols} 个符号")
+        
+        # 3. 查询符号含义
+        file_symbols_map: Dict[str, List[Dict[str, Any]]] = {}
+        for file_path, symbol_names in all_symbols.items():
+            language = self._get_file_language(file_path)
+            if language:
+                symbols = self._query_symbols_batch(symbol_names, language)
+                file_symbols_map[file_path] = symbols
+        
+        queried_count = sum(len(s) for s in file_symbols_map.values())
+        logger.info(f"查询到 {queried_count} 个符号记录")
+        
+        # 4. 推断文件功能
+        file_functions: Dict[str, Dict[str, Any]] = {}
+        for file_path, symbols in file_symbols_map.items():
+            function_info = self._infer_file_function(file_path, symbols)
+            file_functions[file_path] = function_info
+        
+        logger.info(f"   分析了 {len(file_functions)} 个文件")
+        
+        # 5. 分析目录功能
+        dir_functions: Dict[str, Dict[str, Any]] = {}
+        all_dirs: Set[str] = set()
+        for file_info in files:
+            file_path_obj = Path(file_info.path)
+            for parent in file_path_obj.parents:
+                if self.config.root_path in parent.parents or parent == Path(self.config.root_path):
+                    all_dirs.add(str(parent))
+        
+        for dir_path in all_dirs:
+            dir_func = self._analyze_directory(dir_path, file_functions)
+            dir_functions[dir_path] = dir_func
+        
+        logger.info(f"   分析了 {len(dir_functions)} 个目录")
+        
+        # 6. 构建目录树
+        tree = self._build_directory_tree(files)
+        
+        # 7. 格式化输出
+        root_path_obj = Path(self.config.root_path)
+        root_name = root_path_obj.name or str(root_path_obj)
+        formatted_tree = root_name + '\n' + self._format_tree_text(tree, file_functions, dir_functions)
+        
+        return {
+            'tree': formatted_tree,
+            'file_functions': file_functions,
+            'dir_functions': dir_functions,
+            'stats': {
+                'files_count': len(files),
+                'symbols_count': total_symbols,
+                'queried_symbols': queried_count,
+                **scan_result['stats']
             }
-        
-        finally:
-            # 关闭 CodeIndex 客户端
-            if self._codeindex_client:
-                self._codeindex_client.close()
-    
+        }
+
     def detect_to_file(self, output_path: str, format: str = 'markdown'):
         """
         检测并输出到文件
@@ -793,5 +588,5 @@ class StructureDetector:
             else:
                 f.write(result['tree'])
         
-        print(f"✅ 结果已保存到: {output_path}")
+        logger.info(f"✅ 结果已保存到: {output_path}")
 

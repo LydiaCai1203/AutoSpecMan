@@ -1,8 +1,6 @@
-import os
 import yaml
-from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Optional, List
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any, Union
 
 @dataclass
 class CodeIndexConfig:
@@ -22,6 +20,13 @@ class StructureDetectorConfig:
     languages: List[str] = None
 
 @dataclass
+class CodeStyleDetectorConfig:
+    """代码风格检测器配置"""
+    root_path: str
+    codeindex_db_path: Optional[str] = None
+    languages: Optional[List[str]] = None
+
+@dataclass
 class AppConfig:
     """应用主配置"""
     project_root: str
@@ -29,7 +34,52 @@ class AppConfig:
     detector: StructureDetectorConfig
 
 
-def load_detector_config(config_path: Optional[str] = None) -> StructureDetectorConfig:
+def _load_config_data(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    从配置文件加载原始配置数据（公共函数）
+    
+    Args:
+        config_path: 配置文件路径，如果为 None 则查找默认配置文件
+        
+    Returns:
+        配置数据字典
+        
+    Raises:
+        FileNotFoundError: 配置文件不存在
+        ValueError: 配置文件格式错误
+    """
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ValueError(f"配置文件格式错误: {e}")
+    
+    if not config_data:
+        raise ValueError("配置文件为空")
+    
+    return config_data
+
+
+def _parse_common_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    解析通用配置项（root_path, languages）
+    
+    Args:
+        config_data: 配置数据字典
+        
+    Returns:
+        包含通用配置项的字典
+    """
+    project_config = config_data.get('project', {})
+    root_path = project_config.get('root_path', '')
+    languages = project_config.get('languages', ['go', 'python', 'typescript', 'javascript', 'java', 'rust'])
+    return {
+        'root_path': root_path,
+        'languages': languages
+    }
+
+
+def load_structure_detector_config(config_path: Optional[str] = None) -> StructureDetectorConfig:
     """
     从配置文件加载 StructureDetector 配置
     
@@ -43,77 +93,74 @@ def load_detector_config(config_path: Optional[str] = None) -> StructureDetector
         FileNotFoundError: 配置文件不存在
         ValueError: 配置文件格式错误
     """
-    if config_path is None:
-        # 查找默认配置文件
-        config_dir = Path(__file__).parent
-        config_path = config_dir / "detector_config.yaml"
-        
-        # 如果不存在，尝试查找项目根目录下的配置文件
-        if not config_path.exists():
-            project_root = Path(__file__).parent.parent
-            config_path = project_root / "detector_config.yaml"
+    config_data = _load_config_data(config_path)
+    common_config = _parse_common_config(config_data)
     
-    config_path_obj = Path(config_path)
-    if not config_path_obj.exists():
-        raise FileNotFoundError(f"配置文件不存在: {config_path}")
-    
-    try:
-        with open(config_path_obj, 'r', encoding='utf-8') as f:
-            config_data = yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise ValueError(f"配置文件格式错误: {e}")
-    
-    if not config_data:
-        raise ValueError("配置文件为空")
-    
-    # 解析项目配置
     project_config = config_data.get('project', {})
-    root_path = project_config.get('root_path', '')
-    if not root_path:
-        # 如果配置文件中没有设置，尝试使用环境变量或当前目录
-        root_path = os.getenv('DETECTOR_PROJECT_PATH', '.')
-    
     max_depth = project_config.get('max_depth')
-    languages = project_config.get('languages', ['go', 'python', 'typescript', 'javascript', 'java', 'rust'])
     
-    # 解析 CodeIndex 配置
     codeindex_config = config_data.get('codeindex', {})
     codeindex_db_path = codeindex_config.get('db_path')
     
     return StructureDetectorConfig(
-        root_path=root_path,
+        root_path=common_config['root_path'],
         codeindex_db_path=codeindex_db_path,
         max_depth=max_depth,
-        languages=languages
+        languages=common_config['languages']
     )
 
 
-def save_detector_config(config: StructureDetectorConfig, config_path: Optional[str] = None):
+def load_codestyle_detector_config(config_path: Optional[str] = None) -> CodeStyleDetectorConfig:
     """
-    保存 StructureDetector 配置到文件
+    从配置文件加载 CodeStyleDetector 配置
     
     Args:
-        config: StructureDetectorConfig 实例
-        config_path: 配置文件路径，如果为 None 则使用默认路径
+        config_path: 配置文件路径，如果为 None 则查找默认配置文件
+        
+    Returns:
+        CodeStyleDetectorConfig 实例
+        
+    Raises:
+        FileNotFoundError: 配置文件不存在
+        ValueError: 配置文件格式错误
     """
-    if config_path is None:
-        config_dir = Path(__file__).parent
-        config_path = config_dir / "detector_config.yaml"
+    config_data = _load_config_data(config_path)
+    common_config = _parse_common_config(config_data)
     
-    config_data = {
-        'project': {
-            'root_path': config.root_path,
-            'max_depth': config.max_depth,
-            'languages': config.languages or ['go', 'python', 'typescript', 'javascript', 'java', 'rust']
-        },
-        'codeindex': {
-            'db_path': config.codeindex_db_path,
-            'auto_find_strategy': 'both'
-        }
-    }
+    codeindex_config = config_data.get('codeindex', {})
+    codeindex_db_path = codeindex_config.get('db_path')
     
-    config_path_obj = Path(config_path)
-    config_path_obj.parent.mkdir(parents=True, exist_ok=True)
+    return CodeStyleDetectorConfig(
+        root_path=common_config['root_path'],
+        codeindex_db_path=codeindex_db_path,
+        languages=common_config['languages']
+    )
+
+
+def load_detector_config(
+    config_path: Optional[str] = None,
+    config_type: Optional[str] = None
+) -> Union[StructureDetectorConfig, CodeStyleDetectorConfig]:
+    """
+    从配置文件加载检测器配置（公共函数，支持多种配置类型）
     
-    with open(config_path_obj, 'w', encoding='utf-8') as f:
-        yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    Args:
+        config_path: 配置文件路径，如果为 None 则查找默认配置文件
+        config_type: 配置类型，可选值：'structure' 或 'codestyle'，默认为 'structure'
+        
+    Returns:
+        检测器配置实例（StructureDetectorConfig 或 CodeStyleDetectorConfig）
+        
+    Raises:
+        FileNotFoundError: 配置文件不存在
+        ValueError: 配置文件格式错误或配置类型无效
+    """
+    if config_type is None:
+        config_type = 'structure'
+    
+    if config_type == 'structure':
+        return load_structure_detector_config(config_path)
+    elif config_type == 'codestyle':
+        return load_codestyle_detector_config(config_path)
+    else:
+        raise ValueError(f"无效的配置类型: {config_type}，支持的类型: 'structure', 'codestyle'")

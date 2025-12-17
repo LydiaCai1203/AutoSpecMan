@@ -8,4 +8,4 @@ typing-extensions>=4.0.0
 PyYAML>=6.0
 
 # 日志和调试
-# Python 标准库已包含 logging，无需额外依赖
+loguru>=0.7.0
