@@ -34,6 +34,14 @@ class GitDetectorConfig:
     git_repo_path: Optional[str] = None  # 如果与 root_path 不同
 
 @dataclass
+class ApiDesignDetectorConfig:
+    """API 设计规范检测器配置"""
+    root_path: str
+    codeindex_db_path: Optional[str] = None
+    languages: Optional[List[str]] = None
+    analyze_frameworks: Optional[List[str]] = None  # 可选：指定要分析的框架
+
+@dataclass
 class AppConfig:
     """应用主配置"""
     project_root: str
@@ -172,16 +180,47 @@ def load_git_detector_config(config_path: Optional[str] = None) -> GitDetectorCo
     )
 
 
+def load_api_design_detector_config(config_path: Optional[str] = None) -> ApiDesignDetectorConfig:
+    """
+    从配置文件加载 ApiDesignDetector 配置
+    
+    Args:
+        config_path: 配置文件路径，如果为 None 则查找默认配置文件
+        
+    Returns:
+        ApiDesignDetectorConfig 实例
+        
+    Raises:
+        FileNotFoundError: 配置文件不存在
+        ValueError: 配置文件格式错误
+    """
+    config_data = _load_config_data(config_path)
+    common_config = _parse_common_config(config_data)
+    
+    codeindex_config = config_data.get('codeindex', {})
+    codeindex_db_path = codeindex_config.get('db_path')
+    
+    api_config = config_data.get('api', {})
+    analyze_frameworks = api_config.get('analyze_frameworks')
+    
+    return ApiDesignDetectorConfig(
+        root_path=common_config['root_path'],
+        codeindex_db_path=codeindex_db_path,
+        languages=common_config['languages'],
+        analyze_frameworks=analyze_frameworks
+    )
+
+
 def load_detector_config(
     config_path: Optional[str] = None,
     config_type: Optional[str] = None
-) -> Union[StructureDetectorConfig, CodeStyleDetectorConfig, GitDetectorConfig]:
+) -> Union[StructureDetectorConfig, CodeStyleDetectorConfig, GitDetectorConfig, ApiDesignDetectorConfig]:
     """
     从配置文件加载检测器配置（公共函数，支持多种配置类型）
     
     Args:
         config_path: 配置文件路径，如果为 None 则查找默认配置文件
-        config_type: 配置类型，可选值：'structure', 'codestyle', 'git'，默认为 'structure'
+        config_type: 配置类型，可选值：'structure', 'codestyle', 'git', 'api'，默认为 'structure'
         
     Returns:
         检测器配置实例
@@ -199,5 +238,7 @@ def load_detector_config(
         return load_codestyle_detector_config(config_path)
     elif config_type == 'git':
         return load_git_detector_config(config_path)
+    elif config_type == 'api':
+        return load_api_design_detector_config(config_path)
     else:
-        raise ValueError(f"无效的配置类型: {config_type}，支持的类型: 'structure', 'codestyle', 'git'")
+        raise ValueError(f"无效的配置类型: {config_type}，支持的类型: 'structure', 'codestyle', 'git', 'api'")

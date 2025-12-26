@@ -18,4 +18,12 @@ Git 工作流（分支策略、合并策略）
 Commit 信息规范（格式、语义化）
 分支命名规范
 Code Review 流程
+
+4. API 设计规范
+RESTful/GraphQL/gRPC 设计原则
+URL 路径规范
+HTTP 方法使用规范
+请求/响应格式规范
+状态码使用规范
+API 版本管理
 ```
